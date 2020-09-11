@@ -1,111 +1,143 @@
 package com.example.pdfgeneratorapplication
 
-import android.content.Context
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.pdf.PdfDocument
 import android.os.Bundle
 import android.os.Environment
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.example.pdfgeneratorapplication.PermissionsActivity.Companion.PERMISSION_REQUEST_CODE
-import com.example.pdfgeneratorapplication.PermissionsChecker.Companion.REQUIRED_PERMISSION
-import com.itextpdf.text.*
-import com.itextpdf.text.pdf.BaseFont
-import com.itextpdf.text.pdf.PdfWriter
-import com.itextpdf.text.pdf.draw.LineSeparator
+import androidx.core.app.ActivityCompat
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val checker = PermissionsChecker(this)
+        ActivityCompat.requestPermissions(
+            this, arrayOf(
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ), PackageManager.PERMISSION_GRANTED
+        )
+        createPDF()
+    }
+
+    @SuppressLint("ResourceAsColor")
+    fun createPDF() {
 
         buttonGerarPdf.setOnClickListener(View.OnClickListener {
+            
+            val btm1 = BitmapFactory.decodeResource(resources, R.drawable.croqui)
+            val btm2 = BitmapFactory.decodeResource(resources, R.drawable.maps)
+            val scaledBitmap1 = Bitmap.createScaledBitmap(btm1, 300,300, false)
+            val scaledBitmap2 = Bitmap.createScaledBitmap(btm2, 300,300, false)
 
-            if (checker.lacksPermissions(*REQUIRED_PERMISSION)) {
-                PermissionsActivity.startActivityForResult(
-                    this,
-                    PERMISSION_REQUEST_CODE,
-                    *REQUIRED_PERMISSION
-                )
-            } else {
-                createPDF()
+            val document = PdfDocument()
+            val paint = Paint().apply {
+                isAntiAlias = true
+                color = Color.BLUE
+                style = Paint.Style.FILL
+                textAlign = Paint.Align.CENTER
             }
+
+            var i = 1
+            while (i <= 6) {
+                val pageInfo = PdfDocument.PageInfo.Builder(595, 842, i).create()
+                val page = document.startPage(pageInfo)
+                val canvas = page.canvas
+
+                paint.color = Color.BLUE
+                paint.textSize = 18.0F
+                canvas.drawText(
+                    "Maptriz Smart City",
+                    (pageInfo.pageWidth / 2).toFloat(),
+                    30F,
+                    paint
+                )
+
+                paint.textSize = 10.0F
+                paint.color = Color.rgb(112, 119, 119)
+                canvas.drawText(
+                    "Av. Higienópolis 110, Londrina-PR",
+                    (pageInfo.pageWidth / 2).toFloat(),
+                    50F,
+                    paint
+                )
+                canvas.drawBitmap(scaledBitmap1, (pageInfo.pageWidth / 4).toFloat(), 80f, paint)
+                canvas.drawLine(
+                    0f,
+                    (pageInfo.pageHeight / 2).toFloat(),
+                    595f,
+                    (pageInfo.pageHeight / 2).toFloat(),
+                    paint
+                )
+
+                paint.color = Color.BLUE
+                paint.textSize = 18.0F
+                canvas.drawText(
+                    "Maptriz Smart City",
+                    (pageInfo.pageWidth / 2).toFloat(),
+                    (pageInfo.pageHeight/2).toFloat() + 30F,
+                    paint
+                )
+
+                paint.textSize = 10.0F
+                paint.color = Color.rgb(112, 119, 119)
+                canvas.drawText(
+                    "Av. Higienópolis 110, Londrina-PR",
+                    (pageInfo.pageWidth / 2).toFloat(),
+                    (pageInfo.pageHeight/2).toFloat() + 50F,
+                    paint
+                )
+                canvas.drawBitmap(scaledBitmap2, (pageInfo.pageWidth / 4).toFloat(), (pageInfo.pageHeight/2).toFloat() + 80f, paint)
+
+                document.finishPage(page)
+
+                i++;
+            }
+
+            val file = getOutputMediaFile()
+
+            try {
+                document.writeTo(FileOutputStream(file))
+            }catch(e: IOException){
+                e.printStackTrace()
+            }
+
+            document.close();
+
+            Toast.makeText(this, "PDF GERADO !", Toast.LENGTH_LONG).show()
         })
     }
 
-    fun createPDF() {
-        val document = Document();
-
-        // Location to save
-        PdfWriter.getInstance(
-            document,
-            FileOutputStream(getAppPath(applicationContext) + "123.pdf")
-        )
-
-        // Open to write
-        document.open();
-
-        // Document Settings
-        document.pageSize = PageSize.A4;
-        document.addCreationDate();
-        document.addAuthor("Android School");
-        document.addCreator("Pratik Butani");
-
-        //variables
-        val mColorAccent = BaseColor(0, 153, 204, 255)
-        val mHeadingFontSize = 20.0f
-
-        val urName = BaseFont.createFont(BaseFont.HELVETICA, "UTF-8", BaseFont.EMBEDDED)
-
-        // LINE SEPARATOR
-        val lineSeparator = LineSeparator()
-        lineSeparator.lineColor = BaseColor(0, 0, 0, 68)
-
-        // Title Order Details...
-        // Adding Title....
-        val mOrderDetailsTitleFont = Font(urName, 36.0f, Font.NORMAL, BaseColor.BLACK)
-
-        // Creating Chunk
-        val mOrderDetailsTitleChunk = Chunk("Order Details", mOrderDetailsTitleFont)
-
-        // Creating Paragraph to add...
-        val mOrderDetailsTitleParagraph = Paragraph(mOrderDetailsTitleChunk)
-
-        // Setting Alignment for Heading
-        mOrderDetailsTitleParagraph.alignment = Element.ALIGN_CENTER
-
-        // Finally Adding that Chunk
-        document.add(mOrderDetailsTitleParagraph)
-
-        // Adding Chunks for Title and value
-        val mOrderIdFont = Font(urName, mHeadingFontSize, Font.NORMAL, mColorAccent)
-        val mOrderIdChunk = Chunk("Order No:", mOrderIdFont)
-        val mOrderIdParagraph = Paragraph(mOrderIdChunk)
-        document.add(mOrderIdParagraph)
-
-        document.add(Paragraph(""));
-        document.add(Chunk(lineSeparator));
-        document.add(Paragraph(""));
-
-        document.close();
-
-        Toast.makeText(this, "PDF GERADO !", Toast.LENGTH_LONG).show()
-    }
-
-    fun getAppPath(context: Context): String? {
-        val dir = File(
-            Environment.getExternalStorageDirectory()
-                .toString() + File.separator
-                    + "PDF"
-                    + File.separator
-        )
-        if (!dir.exists()) {
-            dir.mkdir()
+    fun getOutputMediaFile() : File? {
+        val mediaStorageDir = File(
+            Environment.getDataDirectory(),
+            "/data/"
+                    + applicationContext.packageName
+                    + "/documents"
+        );
+        if (!mediaStorageDir.exists()) {
+            if (!mediaStorageDir.mkdirs()) {
+                return null;
+            }
         }
-        return dir.path + File.separator
+        val timeStamp = SimpleDateFormat("ddMMyyyyHHmm", Locale.US).format(Date());
+        val mPdfName = "TESTE-PDF$timeStamp.pdf";
+        val mediaFile = File(mediaStorageDir.path + File.separator + mPdfName);
+        return mediaFile;
     }
 }
